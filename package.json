@@ -50,7 +50,7 @@
     "vitest": "^4.0.16"
   },
   "peerDependencies": {
-    "baileys": "^6.7.21 || ^7.0.0-rc.5 || ^7.0.0-rc.8"
+    "baileys": "^6.7.21 || ^7.0.0-rc.0 || ^7.0.0-rc.8"
   },
   "peerDependenciesMeta": {
     "baileys": {
