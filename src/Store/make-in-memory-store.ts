@@ -1,7 +1,7 @@
 import type KeyedDB from '@adiwajshing/keyed-db'
 import type { Comparable } from '@adiwajshing/keyed-db/lib/Types'
 import type { BaileysEventEmitter, Chat, ConnectionState, Contact, GroupMetadata, PresenceData, WAMessage, WAMessageCursor, WAMessageKey } from 'baileys'
-import { proto } from 'baileys'
+import { proto, BufferJSON } from 'baileys'
 import { DEFAULT_CONNECTION_CONFIG } from 'baileys'
 import { jidDecode, jidNormalizedUser } from 'baileys'
 import type makeMDSocket from 'baileys/lib/Socket'
@@ -335,7 +335,16 @@ export default (config: BaileysInMemoryStoreConfig) => {
 	})
 
 	const fromJSON = (json: {chats: Chat[], contacts: { [id: string]: Contact }, messages: { [id: string]: WAMessage[] }, labels: { [labelId: string]: Label }, labelAssociations: LabelAssociation[]}) => {
-		chats.upsert(...json.chats)
+		chats.upsert(...json.chats.map(c => {
+			// Fix potential Long objects stored as plain objects
+			for (const key in c) {
+				const val = (c as any)[key]
+				if (val && typeof val === 'object' && 'low' in val && 'high' in val && 'unsigned' in val) {
+					(c as any)[key] = (val.high >>> 0) * 4294967296 + (val.low >>> 0)
+				}
+			}
+			return c
+		}))
 		labelAssociations.upsert(...json.labelAssociations || [])
 		contactsUpsert(Object.values(json.contacts))
 		labelsUpsert(Object.values(json.labels || {}))
@@ -463,7 +472,7 @@ export default (config: BaileysInMemoryStoreConfig) => {
 		writeToFile: (path: string) => {
 			// require fs here so that in case "fs" is not available -- the app does not crash
 			const { writeFileSync } = require('fs')
-			writeFileSync(path, JSON.stringify(toJSON()))
+			writeFileSync(path, JSON.stringify(toJSON(), BufferJSON.replacer))
 		},
 		readFromFile: (path: string) => {
 			// require fs here so that in case "fs" is not available -- the app does not crash
@@ -471,7 +480,13 @@ export default (config: BaileysInMemoryStoreConfig) => {
 			if (existsSync(path)) {
 				logger.debug({ path }, 'reading from file')
 				const jsonStr = readFileSync(path, { encoding: 'utf-8' })
-				const json = JSON.parse(jsonStr)
+				const json = JSON.parse(jsonStr, (key, value) => {
+					const val = BufferJSON.reviver(key, value)
+					if (val && typeof val === 'object' && 'low' in val && 'high' in val && 'unsigned' in val) {
+						return (val.high >>> 0) * 4294967296 + (val.low >>> 0)
+					}
+					return val
+				})
 				fromJSON(json)
 			}
 		}
