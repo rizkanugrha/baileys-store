@@ -194,14 +194,14 @@ export default (config: BaileysInMemoryStoreConfig) => {
 
 		ev.on('labels.association', ({ type, association }) => {
 			switch (type) {
-			case 'add':
-				labelAssociations.upsert(association)
-				break
-			case 'remove':
-				labelAssociations.delete(association)
-				break
-			default:
-				console.error(`unknown operation type [${type}]`)
+				case 'add':
+					labelAssociations.upsert(association)
+					break
+				case 'remove':
+					labelAssociations.delete(association)
+					break
+				default:
+					console.error(`unknown operation type [${type}]`)
 			}
 		})
 
@@ -218,25 +218,25 @@ export default (config: BaileysInMemoryStoreConfig) => {
 		})
 		ev.on('messages.upsert', ({ messages: newMessages, type }) => {
 			switch (type) {
-			case 'append':
-			case 'notify':
-				for (const msg of newMessages) {
-					const jid = jidNormalizedUser(msg.key.remoteJid!)
-					const list = assertMessageList(jid)
-					list.upsert(msg, 'append')
+				case 'append':
+				case 'notify':
+					for (const msg of newMessages) {
+						const jid = jidNormalizedUser(msg.key.remoteJid!)
+						const list = assertMessageList(jid)
+						list.upsert(msg, 'append')
 
-					if (type === 'notify' && !chats.get(jid)) {
-						ev.emit('chats.upsert', [
-							{
-								id: jid,
-								conversationTimestamp: toNumber(msg.messageTimestamp),
-								unreadCount: 1
-							}
-						])
+						if (type === 'notify' && !chats.get(jid)) {
+							ev.emit('chats.upsert', [
+								{
+									id: jid,
+									conversationTimestamp: toNumber(msg.messageTimestamp),
+									unreadCount: 1
+								}
+							])
+						}
 					}
-				}
 
-				break
+					break
 			}
 		})
 		ev.on('messages.update', updates => {
@@ -286,21 +286,25 @@ export default (config: BaileysInMemoryStoreConfig) => {
 			const metadata = groupMetadata[id]
 			if (metadata) {
 				switch (action) {
-				case 'add':
-					metadata.participants.push(...participants.map(id => ({ id, isAdmin: false, isSuperAdmin: false })))
-					break
-				case 'demote':
-				case 'promote':
-					for (const participant of metadata.participants) {
-						if (participants.includes(participant.id)) {
-							participant.isAdmin = action === 'promote'
+					case 'add':
+						metadata.participants.push(...participants.map(id => ({
+							id: id as any,
+							isAdmin: false,
+							isSuperAdmin: false
+						})))
+						break
+					case 'demote':
+					case 'promote':
+						for (const participant of metadata.participants) {
+							if (participants.includes(participant.id as any)) {
+								participant.isAdmin = action === 'promote'
+							}
 						}
-					}
 
-					break
-				case 'remove':
-					metadata.participants = metadata.participants.filter(p => !participants.includes(p.id))
-					break
+						break
+					case 'remove':
+						metadata.participants = metadata.participants.filter(p => !participants.includes(p.id as any))
+						break
 				}
 			}
 		})
@@ -334,7 +338,7 @@ export default (config: BaileysInMemoryStoreConfig) => {
 		labelAssociations
 	})
 
-	const fromJSON = (json: {chats: Chat[], contacts: { [id: string]: Contact }, messages: { [id: string]: WAMessage[] }, labels: { [labelId: string]: Label }, labelAssociations: LabelAssociation[]}) => {
+	const fromJSON = (json: { chats: Chat[], contacts: { [id: string]: Contact }, messages: { [id: string]: WAMessage[] }, labels: { [labelId: string]: Label }, labelAssociations: LabelAssociation[] }) => {
 		chats.upsert(...json.chats.map(c => {
 			// Fix potential Long objects stored as plain objects
 			for (const key in c) {
@@ -351,7 +355,7 @@ export default (config: BaileysInMemoryStoreConfig) => {
 		for (const jid in json.messages) {
 			const list = assertMessageList(jid)
 			for (const msg of json.messages[jid]) {
-				list.upsert(proto.WebMessageInfo.fromObject(msg), 'append')
+				list.upsert(proto.WebMessageInfo.fromObject(msg) as WAMessage, 'append')
 			}
 		}
 	}
@@ -368,7 +372,7 @@ export default (config: BaileysInMemoryStoreConfig) => {
 		labelAssociations,
 		bind,
 		/** loads messages from the store, if not found -- uses the legacy connection */
-		loadMessages: async(jid: string, count: number, cursor: WAMessageCursor) => {
+		loadMessages: async (jid: string, count: number, cursor: WAMessageCursor) => {
 			const list = assertMessageList(jid)
 			const mode = !cursor || 'before' in cursor ? 'before' : 'after'
 			const cursorKey = !!cursor ? ('before' in cursor ? cursor.before : cursor.after) : undefined
@@ -425,12 +429,12 @@ export default (config: BaileysInMemoryStoreConfig) => {
 			return associations.map(({ labelId }) => labelId)
 
 		},
-		loadMessage: async(jid: string, id: string) => messages[jid]?.get(id),
-		mostRecentMessage: async(jid: string) => {
+		loadMessage: async (jid: string, id: string) => messages[jid]?.get(id),
+		mostRecentMessage: async (jid: string) => {
 			const message: WAMessage | undefined = messages[jid]?.array.slice(-1)[0]
 			return message
 		},
-		fetchImageUrl: async(jid: string, sock: WASocket | undefined) => {
+		fetchImageUrl: async (jid: string, sock: WASocket | undefined) => {
 			const contact = contacts[jid]
 			if (!contact) {
 				return sock?.profilePictureUrl(jid)
@@ -442,7 +446,7 @@ export default (config: BaileysInMemoryStoreConfig) => {
 
 			return contact.imgUrl
 		},
-		fetchGroupMetadata: async(jid: string, sock: WASocket | undefined) => {
+		fetchGroupMetadata: async (jid: string, sock: WASocket | undefined) => {
 			if (!groupMetadata[jid]) {
 				const metadata = await sock?.groupMetadata(jid)
 				if (metadata) {
@@ -462,7 +466,7 @@ export default (config: BaileysInMemoryStoreConfig) => {
 
 		// 	return groupMetadata[jid]
 		// },
-		fetchMessageReceipts: async({ remoteJid, id }: WAMessageKey) => {
+		fetchMessageReceipts: async ({ remoteJid, id }: WAMessageKey) => {
 			const list = messages[remoteJid!]
 			const msg = list?.get(id!)
 			return msg?.userReceipt
