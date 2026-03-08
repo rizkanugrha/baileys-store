@@ -41,7 +41,7 @@
     "@types/node": "^20.17.9",
     "@vitest/coverage-v8": "^4.0.16",
     "@whiskeysockets/eslint-config": "github:whiskeysockets/eslint-config",
-    "baileys": "7.0.0-rc.3",
+    "baileys": "7.0.0-rc.8",
     "conventional-changelog-cli": "^5.0.0",
     "release-it": "^19.0.6",
     "typedoc": "^0.28.14",
@@ -50,7 +50,7 @@
     "vitest": "^4.0.16"
   },
   "peerDependencies": {
-    "baileys": ">=7.0.0-rc.0 <8.0.0"
+    "baileys": "^6.7.21 || ^7.0.0-rc.5 || ^7.0.0-rc.8"
   },
   "peerDependenciesMeta": {
     "baileys": {
